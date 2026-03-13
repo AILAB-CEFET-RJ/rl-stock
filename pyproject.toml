@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "rl-stock"
+version = "0.1.0"
+description = ""
+authors = ["Fernando Fraga"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pandas = "^2.2.3"
+matplotlib = "^3.9.2"
+statsmodels = "^0.14.4"
+stable-baselines3 = "^2.3.2"
+pymannkendall = "^1.4.3"
+gym = "^0.26.2"
+sb3-contrib = "^2.3.0"
+shimmy = "0.2.1"
+tensorboard = "^2.18.0"
+scikit-learn = "^1.6.1"
+yfinance = "^0.2.54"
+lxml = "^5.3.1"
+seaborn = "^0.13.2"
+
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.1.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
