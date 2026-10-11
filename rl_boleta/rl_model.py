@@ -186,6 +186,10 @@ class MultiAssetReinforcementLearningEnv(gym.Env):
     """
 
     def __init__(self, mode, df, tickers):
+        raise RuntimeError(
+            "Legacy row-partition environment retired: it does not enforce day trading. "
+            "Use rl_boleta.session_replay.DailySessionReplay; the trainer still needs migration."
+        )
         super().__init__()
         self.mode = mode
         self.df = df.reset_index(drop=True)
