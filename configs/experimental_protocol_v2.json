@@ -1,0 +1,390 @@
+{
+  "protocol_id": "experimental-protocol-v2-session-day-trading-2026-10-08",
+  "status": "proposed_not_training_ready",
+  "purpose": "Reviewable specification; not a configuration accepted by the legacy trainer.",
+  "gates": [
+    "Validate economic simulator and accounting invariants",
+    "Justify historical timing interpretation and venue limitations",
+    "Freeze full-period data and episode eligibility manifests",
+    "Verify actual algorithm settings and synthetic resource smoke run before reward-based selection",
+    "Verify full required-session coverage; do not substitute short segments if primary feasibility fails"
+  ],
+  "tickers": [
+    "AAPL",
+    "TSLA",
+    "MSFT",
+    "CSCO",
+    "F",
+    "C",
+    "FCX",
+    "BAC",
+    "KO",
+    "INTC",
+    "GM",
+    "AAL",
+    "NCLH",
+    "JPM",
+    "PFE",
+    "MS",
+    "DAL",
+    "NEM"
+  ],
+  "partitions": {
+    "train": {
+      "first": "2025-03-03",
+      "last": "2025-05-30",
+      "scheduled_sessions": 63,
+      "minimum_eligible_sessions": 20
+    },
+    "validation": {
+      "first": "2025-06-02",
+      "last": "2025-06-30",
+      "scheduled_sessions": 20,
+      "minimum_eligible_sessions": 10
+    },
+    "test": {
+      "first": "2025-07-01",
+      "last": "2025-07-31",
+      "scheduled_sessions": 22,
+      "minimum_eligible_sessions": 10
+    },
+    "final_refit": {
+      "first": "2025-03-03",
+      "last": "2025-06-30",
+      "scheduled_sessions": 83
+    }
+  },
+  "environment": {
+    "initial_capital_usd": 100000,
+    "reward_scale": 1,
+    "gamma": 1,
+    "initial_capital_floor_fraction": 0.8,
+    "peak_drawdown_stop": null,
+    "action_dead_zone": 0.05,
+    "fee_bps_per_side": 1,
+    "participation_cap": 0.1,
+    "execution_lag_grid_steps": 1
+  },
+  "data": {
+    "calendar": "us-equities-paper-2025",
+    "grid_seconds": 60,
+    "maximum_receipt_age_seconds": 60,
+    "max_spread_bps": 500,
+    "max_depth_distance_bps": 500,
+    "book_levels_per_side": 5,
+    "recent_trades": 10,
+    "source_delay_seconds": 10800,
+    "source_delay_interpretation": "unresolved",
+    "collection_timezone_status": "hypothesis",
+    "trade_timezone_status": "hypothesis"
+  },
+  "episode": {
+    "unit": "one scheduled regular cash-equity session",
+    "initial_portfolio": "cash only at opening; unchanged during fixed warm-up",
+    "window_features": 20,
+    "grid_reference": "minute index q from opening, [open,close)",
+    "opening_grid_index_required_for_features": false,
+    "required_sequence_first_index": 1,
+    "lag_reference_index": 1,
+    "first_window_indices_inclusive": [
+      2,
+      21
+    ],
+    "first_decision_index": 21,
+    "first_decision_local_time": "09:51 America/New_York",
+    "normal": {
+      "scheduled_grid_points": 390,
+      "required_raw_grid_points": 389,
+      "measured_transitions": 368,
+      "intention_indices_inclusive": [
+        21,
+        387
+      ],
+      "regular_fill_indices_inclusive": [
+        22,
+        388
+      ],
+      "liquidation_index": 389,
+      "liquidation_local_time": "15:59"
+    },
+    "early_close_2025_07_03": {
+      "scheduled_grid_points": 210,
+      "required_raw_grid_points": 209,
+      "measured_transitions": 188,
+      "intention_indices_inclusive": [
+        21,
+        207
+      ],
+      "regular_fill_indices_inclusive": [
+        22,
+        208
+      ],
+      "liquidation_index": 209,
+      "liquidation_local_time": "12:59"
+    },
+    "kernel_horizon": "last_session_grid_index - first_decision_index; explicit per episode",
+    "intraday_resets": false,
+    "resume_after_data_gap": false,
+    "warmup_missing": "not_startable; do not move the start",
+    "gap_or_missing_exit": "truncate at first failure, cancel pending, preserve last observed mark and inventory; no invented exit",
+    "evaluable_session": "all required points from q=1 through exit valid jointly; policy-independent retrospective flag, never policy input",
+    "financial_comparison": "common evaluable-session subset, including economic stops and residual holdings; no strategy-dependent filtering",
+    "scheduled_episode_ceilings": {
+      "train": 63,
+      "validation": 20,
+      "test": 22,
+      "final_refit": 83
+    },
+    "short_blocks": "deferred secondary protocol; cannot replace session study or be pooled with session returns"
+  },
+  "normalization": {
+    "price": "price/previous_valid_same_asset_midpoint-1",
+    "volume": "log1p(size_in_shares)",
+    "fit": "Per-feature evaluable training-session observations, grid points counted once; refit on development only for final training",
+    "std_ddof": 0,
+    "zero_std_replacement": 1,
+    "clip_standardized": [
+      -10,
+      10
+    ],
+    "portfolio_scale": "initial_capital",
+    "future_or_test_statistics": false
+  },
+  "models": {
+    "algorithms": [
+      "PPO",
+      "A2C",
+      "SAC",
+      "DDPG"
+    ],
+    "hidden_layers": 2,
+    "hidden_width_candidates": [
+      64,
+      128
+    ],
+    "activation": "ReLU",
+    "learning_rate_candidates": [
+      0.0001,
+      0.0003
+    ],
+    "optimizer": {
+      "name": "Adam",
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "epsilon": 1e-05,
+      "learning_rate_schedule": "constant"
+    },
+    "initialization": {
+      "linear_weights": "Xavier uniform, gain=1",
+      "biases": 0,
+      "initial_gaussian_log_std": 0,
+      "exception": "SAC conditional log_std head: zero weights and biases, ensuring std=1 for every input",
+      "target_networks": "initial exact copies of online networks"
+    },
+    "PPO": {
+      "rollout_steps": 2048,
+      "batch_size": 64,
+      "epochs": 10,
+      "clip": 0.2,
+      "gae_lambda": 0.95,
+      "value_loss_weight": 0.5,
+      "entropy_weight": 0,
+      "max_grad_norm": 0.5,
+      "action_distribution": "Gaussian, clip at environment",
+      "normalize_advantage": true
+    },
+    "A2C": {
+      "rollout_steps": 5,
+      "updates_per_rollout": 1,
+      "gae_lambda": 1,
+      "value_loss_weight": 0.5,
+      "entropy_weight": 0,
+      "max_grad_norm": 0.5,
+      "action_distribution": "Gaussian, clip at environment",
+      "normalize_advantage": false,
+      "use_rms_prop": false
+    },
+    "SAC": {
+      "buffer_size": 100000,
+      "batch_size": 256,
+      "random_initial_steps": 10000,
+      "gradient_updates_per_step": 1,
+      "target_tau": 0.005,
+      "q_critics": 2,
+      "entropy": "adaptive, initial coefficient=1, target=-N",
+      "actor": "squashed Gaussian",
+      "target_update_interval": 1,
+      "entropy_optimizer": "same Adam hyperparameters as actor and critics"
+    },
+    "DDPG": {
+      "buffer_size": 100000,
+      "batch_size": 256,
+      "random_initial_steps": 10000,
+      "gradient_updates_per_step": 1,
+      "target_tau": 0.005,
+      "q_critics": 1,
+      "exploration": "independent Gaussian, std=0.1; clip actions",
+      "actor": "deterministic bounded",
+      "policy_delay": 1,
+      "effective_target_policy_smoothing": false
+    }
+  },
+  "training": {
+    "tuning_seeds": [
+      0,
+      1,
+      2
+    ],
+    "tuning_steps_per_fit": 500000,
+    "final_seeds": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109
+    ],
+    "final_steps_per_fit": 1000000,
+    "sampling": "uniform evaluable session with replacement; one portfolio per sampled day; no intraday reset",
+    "selection": "mean net marked session outcome across evaluable validation sessions and three tuning seeds",
+    "ties": [
+      "lower mean maximum drawdown",
+      "smaller hidden width",
+      "smaller learning rate"
+    ],
+    "incomplete_seed_set": "candidate ineligible; failures reported; no replacement search",
+    "budget_rounding": "at most rollout_steps-1 additional transitions, report actual counts",
+    "checkpoint": "fixed final budget",
+    "evaluation": "deterministic, no online updates; attempt all startable test sessions; complete-session scores on common evaluable dates, truncations reported separately"
+  },
+  "baselines": [
+    "cash",
+    "equal_allocation_single_entry",
+    "ten_interval_momentum",
+    "ten_interval_reversal",
+    "uniform_random_actions_seeds_100_to_109"
+  ],
+  "outcomes": {
+    "primary": "net marked evaluable-session outcome (end_wealth-initial_capital)/initial_capital",
+    "aggregation": "one outcome per session; equal mean across evaluable sessions and training seeds; daily fixed-capital reset, no compounding",
+    "primary_contrast": "PPO minus equal-allocation single-entry baseline, average across final seeds",
+    "secondary": [
+      "maximum marked drawdown",
+      "turnover/initial_capital",
+      "fees",
+      "fill and cancellation rates",
+      "residual inventory",
+      "flat completion rate",
+      "stop counts",
+      "data truncations",
+      "runtime failures",
+      "coverage"
+    ],
+    "residual_positions": "keep marked outcome and flag flat-terminal failure",
+    "unrecoverable_failures": "missing explicit outcomes; disclose paired subset; no superiority claim",
+    "truncations": "partial observed duration and marked return separately reported; never a completed session or fictitious liquidation",
+    "coverage_categories": [
+      "scheduled",
+      "missing_file",
+      "not_startable",
+      "data_truncated",
+      "evaluable",
+      "economic_stop",
+      "flat_completion"
+    ]
+  },
+  "uncertainty": {
+    "market_unit": "scheduled session, with missing flags",
+    "minimum_paired_sessions_for_intervals": 20,
+    "current_archive_maximum_july_file_dates": 17,
+    "current_archive_test_reporting": "descriptive; session-level paired differences and seed variability",
+    "optional_bootstrap": {
+      "replicates": 10000,
+      "method": "paired circular moving blocks",
+      "scheduled_session_block_length": 5,
+      "seed_resampling": "whole trajectory identifiers, once per replicate",
+      "empty_replicates": "count and exclude; never zero-fill"
+    },
+    "secondary_significance_claims": false
+  },
+  "variants": {
+    "discount": {
+      "algorithm": "PPO",
+      "gammas": [
+        0.95,
+        0.99
+      ],
+      "tune_and_refit": true
+    },
+    "observation": {
+      "algorithm": "PPO",
+      "remove_groups": [
+        "recent_trades",
+        "book_levels_2_to_5",
+        "all_book_sizes"
+      ],
+      "tune_and_refit": true,
+      "execution_books_unchanged": true
+    },
+    "stress": {
+      "retrain": false,
+      "fee_bps": [
+        0,
+        5
+      ],
+      "participation_caps": [
+        0.05,
+        0.25
+      ],
+      "design": "one factor at a time, each versus reference, matched baselines"
+    },
+    "receipt_age_coverage_only_seconds": [
+      90,
+      120
+    ],
+    "single_asset_and_transfer": "deferred, separate protocol required",
+    "short_intraday_blocks": "deferred separately registered secondary study; additional forced exits change the objective"
+  },
+  "planned_fits": {
+    "main_tuning": 48,
+    "main_final": 40,
+    "variants_tuning": 60,
+    "variants_final": 50,
+    "total": 198,
+    "requested_environment_transitions": 144000000
+  },
+  "amendments": "Version and justify before reward-based selection; once July policy outcomes are inspected, subsequent amendments make July analysis exploratory.",
+  "supersedes": "experimental-protocol-v1-2026-10-08",
+  "observation_encoder": {
+    "schema": "market-40-plus-capture-age-v1",
+    "asset_feature_order": [
+      "bid_price_1..5",
+      "bid_size_1..5",
+      "ask_price_1..5",
+      "ask_size_1..5",
+      "trade_price_1..10",
+      "trade_size_1..10"
+    ],
+    "trade_rank": "prepared list order: descending declared trade time, stable ties; conditional on clock assumptions; no adjacent-trade return",
+    "market_width": "41*N: all standardized 40*N fields followed by N capture ages",
+    "capture_age_unit_seconds": 60,
+    "trade_ages_included": false,
+    "trade_age_gate": "unresolved source-clock semantics",
+    "context_order": [
+      "cash/initial_capital",
+      "N marked exposures/initial_capital",
+      "wealth/initial_capital",
+      "elapsed_minutes/390",
+      "remaining_transitions/390"
+    ],
+    "context_width": "N+4",
+    "flattened_width_18_assets": 14782,
+    "fit_grid": "q=2 through reserved exit, once per evaluable fitting date; q=1 is lag reference only"
+  }
+}
