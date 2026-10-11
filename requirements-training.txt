@@ -1,0 +1,5 @@
+# Isolated integration environment; do not alter the legacy Poetry lock.
+gymnasium==0.29.1
+stable-baselines3==2.3.2
+numpy==1.26.4
+# The smoke runner records the loaded PyTorch version and other dependencies.
