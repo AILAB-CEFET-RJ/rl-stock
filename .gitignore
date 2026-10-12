@@ -10,6 +10,7 @@ __pycache__/
 *.json
 !configs/experimental_protocol_v1.json
 !configs/experimental_protocol_v2.json
+!configs/experimental_protocol_v3.json
 
 # Distribution / packaging
 .Python

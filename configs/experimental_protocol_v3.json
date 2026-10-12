@@ -1,0 +1,487 @@
+{
+  "protocol_id": "experimental-protocol-v3-proposal-masked-session-2026-10-12",
+  "status": "draft_for_review_not_executable",
+  "purpose": "Reviewable alternative for historical missing observations; not accepted by current v2 trainer or collector.",
+  "gates": [
+    "Review valuation and reward assumptions under missing observations before manuscript changes",
+    "Specify acceptance or exclusion limits for long observation gaps using methodological justification; no test-return tuning",
+    "Implement and validate partial observations, causal readiness and per-asset order expiration",
+    "Freeze strategy-independent eligibility and per-feature training normalizer manifests",
+    "Validate finite-depth liquidation, fees, residual positions and stop handling",
+    "Reverify PPO A2C SAC DDPG observation dimensions, optimizers and synthetic smoke runs",
+    "Retain historical clock and single-venue limitations; no certification of executable liquidity"
+  ],
+  "tickers": [
+    "AAPL",
+    "TSLA",
+    "MSFT",
+    "CSCO",
+    "F",
+    "C",
+    "FCX",
+    "BAC",
+    "KO",
+    "INTC",
+    "GM",
+    "AAL",
+    "NCLH",
+    "JPM",
+    "PFE",
+    "MS",
+    "DAL",
+    "NEM"
+  ],
+  "partitions": {
+    "train": {
+      "first": "2025-03-03",
+      "last": "2025-05-30",
+      "scheduled_sessions": 63,
+      "minimum_eligible_sessions": 20
+    },
+    "validation": {
+      "first": "2025-06-02",
+      "last": "2025-06-30",
+      "scheduled_sessions": 20,
+      "minimum_eligible_sessions": 10
+    },
+    "test": {
+      "first": "2025-07-01",
+      "last": "2025-07-31",
+      "scheduled_sessions": 22,
+      "minimum_eligible_sessions": 10
+    },
+    "final_refit": {
+      "first": "2025-03-03",
+      "last": "2025-06-30",
+      "scheduled_sessions": 83
+    }
+  },
+  "environment": {
+    "initial_capital_usd": 100000,
+    "reward_scale": 1,
+    "gamma": 1,
+    "initial_capital_floor_fraction": 0.8,
+    "peak_drawdown_stop": null,
+    "action_dead_zone": 0.05,
+    "fee_bps_per_side": 1,
+    "participation_cap": 0.1,
+    "execution_lag_grid_steps": 1
+  },
+  "data": {
+    "calendar": "us-equities-paper-2025",
+    "grid_seconds": 60,
+    "maximum_receipt_age_seconds": 60,
+    "max_spread_bps": 500,
+    "max_depth_distance_bps": 500,
+    "book_levels_per_side": 5,
+    "recent_trades": 10,
+    "source_delay_seconds": null,
+    "source_delay_interpretation": "no established fixed lag; do not subtract three hours",
+    "collection_timezone_status": "hypothesis",
+    "trade_timezone_status": "hypothesis",
+    "timing_evidence": "docs/clock_transition_audit.md",
+    "source_book_timestamp_verified": false
+  },
+  "episode": {
+    "unit": "one scheduled regular cash-equity session, portfolio uninterrupted after entry",
+    "initial_portfolio": "cash only at opening, initial USD 100000; no trading during warmup",
+    "grid_reference": "minute q from session opening; no pre-open capture carries across opening",
+    "window_features": 20,
+    "readiness_window_points": 21,
+    "first_possible_entry_index": 21,
+    "entry": "first q with all 18 assets valid at q-20 through q, using capture receipt times only",
+    "minimum_remaining_transitions": 2,
+    "latest_entry_index": "liquidation_index - 2; otherwise not_startable",
+    "warmup_missing": "continue waiting causally; do not search later windows using future coverage",
+    "end": "original scheduled liquidation minute, independent of entry and future gaps",
+    "normal": {
+      "last_intention_index": 387,
+      "last_regular_fill_index": 388,
+      "liquidation_index": 389,
+      "liquidation_local_time": "15:59"
+    },
+    "early_close_2025_07_03": {
+      "last_intention_index": 207,
+      "last_regular_fill_index": 208,
+      "liquidation_index": 209,
+      "liquidation_local_time": "12:59"
+    },
+    "kernel_horizon": "liquidation_index - actual_entry_index",
+    "intraday_resets": false,
+    "pause_or_resume_episodes": false,
+    "gap_behavior": "keep the same daily clock, cash and inventory; mask unavailable assets, expire affected fills",
+    "all_assets_unavailable": "advance scheduled time with zero executable orders and held marks; do not infer zero true market return",
+    "exit_coverage": "all 18 assets have accepted captures received since opening with receipt age <=60 seconds",
+    "eligible_coverage": "causal entry with sufficient remaining steps plus common terminal coverage; gap cap unresolved",
+    "eligibility_not_policy_input": true,
+    "financial_comparison": "common strategy-independent data-eligible dates, retaining stops and liquidation failures",
+    "missing_exit": "data truncation with inventory preserved; no retroactive sale or complete-day return",
+    "short_blocks": "rollout boundaries may update learning without resetting portfolio or liquidating",
+    "long_gap_policy": {
+      "status": "unresolved_before_training",
+      "primary_cap_minutes": null,
+      "diagnostic_grid_missing_run_caps": [
+        1,
+        2,
+        5,
+        15,
+        30
+      ],
+      "choose_using": "risk and observation justification with training-only diagnostics; not desired test count"
+    }
+  },
+  "normalization": {
+    "price": "current price / midpoint at most recent earlier valid same-asset grid point - 1, with reference age exposed",
+    "volume": "log1p(size_in_shares)",
+    "fit": "per-market-feature valid observations only from common eligible training dates; unique grid points, exclude masked sentinels",
+    "std_ddof": 0,
+    "zero_std_replacement": 1,
+    "clip_standardized": [
+      -10,
+      10
+    ],
+    "portfolio_scale": "initial_capital",
+    "future_or_test_statistics": false,
+    "per_feature_valid_counts": true
+  },
+  "models": {
+    "algorithms": [
+      "PPO",
+      "A2C",
+      "SAC",
+      "DDPG"
+    ],
+    "hidden_layers": 2,
+    "hidden_width_candidates": [
+      64,
+      128
+    ],
+    "activation": "ReLU",
+    "learning_rate_candidates": [
+      0.0001,
+      0.0003
+    ],
+    "optimizer": {
+      "name": "Adam",
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "epsilon": 1e-05,
+      "learning_rate_schedule": "constant"
+    },
+    "initialization": {
+      "linear_weights": "Xavier uniform, gain=1",
+      "biases": 0,
+      "initial_gaussian_log_std": 0,
+      "exception": "SAC conditional log_std head: zero weights and biases, ensuring std=1 for every input",
+      "target_networks": "initial exact copies of online networks"
+    },
+    "PPO": {
+      "rollout_steps": 2048,
+      "batch_size": 64,
+      "epochs": 10,
+      "clip": 0.2,
+      "gae_lambda": 0.95,
+      "value_loss_weight": 0.5,
+      "entropy_weight": 0,
+      "max_grad_norm": 0.5,
+      "action_distribution": "Gaussian, clip at environment",
+      "normalize_advantage": true
+    },
+    "A2C": {
+      "rollout_steps": 5,
+      "updates_per_rollout": 1,
+      "gae_lambda": 1,
+      "value_loss_weight": 0.5,
+      "entropy_weight": 0,
+      "max_grad_norm": 0.5,
+      "action_distribution": "Gaussian, clip at environment",
+      "normalize_advantage": false,
+      "use_rms_prop": false
+    },
+    "SAC": {
+      "buffer_size": 100000,
+      "batch_size": 256,
+      "random_initial_steps": 10000,
+      "gradient_updates_per_step": 1,
+      "target_tau": 0.005,
+      "q_critics": 2,
+      "entropy": "adaptive, initial coefficient=1, target=-N",
+      "actor": "squashed Gaussian",
+      "target_update_interval": 1,
+      "entropy_optimizer": "same Adam hyperparameters as actor and critics"
+    },
+    "DDPG": {
+      "buffer_size": 100000,
+      "batch_size": 256,
+      "random_initial_steps": 10000,
+      "gradient_updates_per_step": 1,
+      "target_tau": 0.005,
+      "q_critics": 1,
+      "exploration": "independent Gaussian, std=0.1; clip actions",
+      "actor": "deterministic bounded",
+      "policy_delay": 1,
+      "effective_target_policy_smoothing": false
+    }
+  },
+  "training": {
+    "tuning_seeds": [
+      0,
+      1,
+      2
+    ],
+    "tuning_steps_per_fit": 500000,
+    "final_seeds": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109
+    ],
+    "final_steps_per_fit": 1000000,
+    "sampling": "uniform common data-eligible daily session with replacement; actual causal entry, continuous portfolio, no intraday reset",
+    "selection": "mean net terminal marked-wealth score on common validation dates across tuning seeds; flat completion and proxy-risk metrics mandatory",
+    "ties": [
+      "lower mean maximum drawdown",
+      "smaller hidden width",
+      "smaller learning rate"
+    ],
+    "incomplete_seed_set": "candidate ineligible; failures reported; no replacement search",
+    "budget_rounding": "at most rollout_steps-1 additional transitions, report actual counts",
+    "checkpoint": "fixed final budget",
+    "evaluation": "deterministic with no online updates; common data-eligible daily dates, explicit missing-data and liquidation-failure reporting"
+  },
+  "baselines": [
+    "cash",
+    "equal_allocation_single_entry",
+    "ten_interval_momentum",
+    "ten_interval_reversal",
+    "uniform_random_actions_seeds_100_to_109"
+  ],
+  "outcomes": {
+    "primary": "net terminal marked-wealth score on common data-eligible session subset; not necessarily a fully liquidated return",
+    "aggregation": "one outcome per session; equal mean across evaluable sessions and training seeds; daily fixed-capital reset, no compounding",
+    "primary_contrast": "PPO minus equal-allocation single-entry baseline, average across final seeds",
+    "secondary": [
+      "maximum marked drawdown",
+      "turnover/initial_capital",
+      "fees",
+      "fill and cancellation rates",
+      "residual inventory",
+      "flat completion rate",
+      "stop counts",
+      "data truncations",
+      "runtime failures",
+      "coverage",
+      "actual entry time and remaining horizon",
+      "per-asset observation gaps",
+      "held-mark ages",
+      "fraction of marked wealth supported by stale observations",
+      "all-assets-unavailable minutes"
+    ],
+    "residual_positions": "keep marked outcome and flag flat-terminal failure",
+    "unrecoverable_failures": "missing explicit outcomes; disclose paired subset; no superiority claim",
+    "truncations": "partial observed duration and marked return separately reported; never a completed session or fictitious liquidation",
+    "coverage_categories": [
+      "scheduled",
+      "missing_file",
+      "no_causal_entry",
+      "exit_data_missing",
+      "coverage_candidate",
+      "data_eligible_after_gap_rule_review",
+      "economic_stop",
+      "liquidation_failure",
+      "flat_completion"
+    ]
+  },
+  "uncertainty": {
+    "market_unit": "scheduled session, with missing flags",
+    "minimum_paired_sessions_for_intervals": 20,
+    "current_archive_maximum_july_file_dates": 17,
+    "current_archive_test_reporting": "descriptive; session-level paired differences and seed variability",
+    "optional_bootstrap": {
+      "replicates": 10000,
+      "method": "paired circular moving blocks",
+      "scheduled_session_block_length": 5,
+      "seed_resampling": "whole trajectory identifiers, once per replicate",
+      "empty_replicates": "count and exclude; never zero-fill"
+    },
+    "secondary_significance_claims": false
+  },
+  "variants": {
+    "discount": {
+      "algorithm": "PPO",
+      "gammas": [
+        0.95,
+        0.99
+      ],
+      "tune_and_refit": true
+    },
+    "observation": {
+      "algorithm": "PPO",
+      "remove_groups": [
+        "recent_trades",
+        "book_levels_2_to_5",
+        "all_book_sizes"
+      ],
+      "tune_and_refit": true,
+      "execution_books_unchanged": true
+    },
+    "stress": {
+      "retrain": false,
+      "fee_bps": [
+        0,
+        5
+      ],
+      "participation_caps": [
+        0.05,
+        0.25
+      ],
+      "design": "one factor at a time, each versus reference, matched baselines"
+    },
+    "receipt_age_coverage_only_seconds": [
+      90,
+      120
+    ],
+    "single_asset_and_transfer": "deferred, separate protocol required",
+    "short_intraday_blocks": "deferred separately registered secondary study; additional forced exits change the objective",
+    "mandatory_availability_fields": "retain masks and ages in every observation ablation; never present masked zeros as ordinary market features"
+  },
+  "planned_fits": {
+    "main_tuning": 48,
+    "main_final": 40,
+    "variants_tuning": 60,
+    "variants_final": 50,
+    "total": 198,
+    "requested_environment_transitions": 144000000,
+    "status": "inherited planning estimate; no v3 fit authorized by this proposal"
+  },
+  "amendments": "Version and justify before reward-based selection; once July policy outcomes are inspected, subsequent amendments make July analysis exploratory.",
+  "supersedes": "candidate replacement for v2 after review; v2 remains active until approval and implementation",
+  "observation_encoder": {
+    "schema": "proposed-masked-market-40-plus-three-availability-fields-v3",
+    "asset_feature_order": [
+      "bid_price_1..5",
+      "bid_size_1..5",
+      "ask_price_1..5",
+      "ask_size_1..5",
+      "trade_price_1..10",
+      "trade_size_1..10"
+    ],
+    "market_width": "43*N: standardized 40*N fields then N availability masks, N last-receipt ages and N price-reference ages",
+    "age_denominator_seconds": 23400,
+    "trade_ages_included": false,
+    "trade_rank": "descending declared trade time, stable ties; no adjacent-trade returns",
+    "context_order": [
+      "cash/initial_capital",
+      "N marked exposures/initial_capital",
+      "marked wealth/initial_capital",
+      "elapsed_minutes_since_open/390",
+      "remaining_transitions/390"
+    ],
+    "context_width": "N+4",
+    "flattened_width_18_assets": 15502,
+    "fit_grid": "unique valid market features appearing in episode histories from first feature point through exit, common fitting dates only",
+    "runtime_status": "not implemented; v2 encoder remains unchanged"
+  },
+  "schema_version": 3,
+  "based_on": {
+    "protocol_id": "experimental-protocol-v2-session-day-trading-2026-10-08",
+    "sha256": "560e7cb9e13fce39ee0d456c47e8fa159a81e25508106b2254b4a14c9743692a"
+  },
+  "observations": {
+    "interpretation": "partially observed market; feed-forward policy uses explicit masked history and ages",
+    "history_steps": 20,
+    "per_asset_per_step": {
+      "market_values": 40,
+      "availability_mask": 1,
+      "last_accepted_receipt_age": 1,
+      "price_reference_grid_age": 1
+    },
+    "market_shape": [
+      20,
+      774
+    ],
+    "portfolio_context_size": 22,
+    "flattened_size": 15502,
+    "mask": "1 iff accepted current capture since opening and receipt age <=60 seconds; else 0",
+    "masked_encoding": "40 numerical values become zero after standardization when mask=0; this is an input sentinel, never zero market prices or sizes",
+    "age_encoding": "seconds divided by 390*60, clipped to [0,1]; no learned age moments",
+    "reference": "midpoint at most recent earlier valid same-asset grid point within this session, never future",
+    "reference_age": "grid time minus reference grid time; zero sentinel if current unavailable; mask distinguishes sentinel",
+    "gap_effect": "a valid return after a gap may span several minutes; price reference age exposes the elapsed interval",
+    "context": "cash, N marked exposures, marked wealth / initial capital; elapsed and remaining minutes /390",
+    "normalizer_fit": "per-market-feature valid observations only from common eligible training dates; unique grid points, exclude masked sentinels",
+    "no_auto_rewarm_after_entry": true,
+    "initial_reference": "21 complete readiness points guarantee causal references for the first 20-row window"
+  },
+  "orders_with_missing_data": {
+    "decision": "force unavailable asset action components to zero before desired orders and shared-cash budgeting",
+    "fill": "intent from q fills only at q+1 if that asset has a currently valid book; otherwise expires",
+    "no_deferred_fill": true,
+    "portfolio_continuity": true,
+    "fees": "only actual fills pay fees; per-level execution and participation caps unchanged",
+    "reused_snapshot": "consumed displayed depth cannot replenish merely through rereading a cached capture",
+    "discretionary_execution_requires_source_complete_snapshot": true
+  },
+  "valuation_reward": {
+    "mark": "update asset midpoint only on current accepted capture; otherwise retain last observed within-session midpoint",
+    "wealth": "cash + sum(holdings_i * last_observed_midpoint_i)",
+    "reward": "(marked_wealth_after - marked_wealth_before) / initial_capital",
+    "gamma": 1,
+    "reward_scale": 1,
+    "telescoping": "sum of rewards equals terminal marked wealth / initial capital - 1",
+    "gap_return": "unobserved price changes appear when observations resume; held mark is not a stable-price assertion",
+    "no_trade_without_current_book": true,
+    "risk_stop": "initial-capital floor applies to marked wealth, may detect losses late; latch stop, cancel pending, sell valid assets only",
+    "latched_stop_with_unavailable_holdings": "no new buys; retain inventory and try liquidation when books become valid through scheduled exit",
+    "terminal_flat": "if flat, terminal marked wealth equals actual simulated cash",
+    "terminal_residual": "retain marked residual wealth and disclose failed liquidation; never label as completed flat day-trading return",
+    "primary_reporting": "compare terminal marked-wealth score on common eligible dates alongside flat-completion rate, residual exposure and fees",
+    "no_success_only_filter": true,
+    "training_proxy_limitation": "reward and capital stop use observed marks rather than contemporaneous unknown market wealth"
+  },
+  "liquidation": {
+    "at": "scheduled terminal grid point; uses accepted contemporaneously available book only",
+    "pending_order": "terminal interval has no discretionary intention",
+    "costs_and_capacity": "unchanged fee and participation settings; finite depth, no unlimited market fill",
+    "residual": "explicit liquidation failure, inventory retained in result; do not force flatness in accounting",
+    "next_episode": "independent cash-initialized simulated session, not a claim that prior residual holdings were sold",
+    "prior_day_residual_continuation": false
+  },
+  "validation_plan": [
+    "Missing quote does not reset cash, holdings, episode clock or pending orders for other assets",
+    "No future observation affects entry, feature reference, masking or order quantity",
+    "Missing at scheduled fill expires only affected asset order, without later retroactive execution",
+    "Normalization excludes encoded missing-value zeros and validation/test dates",
+    "Reference after a gap includes correct interval age; all-observation-missing state remains finite",
+    "Reward telescopes with fees and stale marks; negative price jumps appear on observation return",
+    "Stop may latch under partial availability and retains unsold inventory",
+    "Terminal missing data, insufficient depth and genuine flat completion remain distinct outcomes",
+    "All algorithms and baselines use identical causal entry, masks, exit and eligible dates"
+  ],
+  "audit_evidence": {
+    "report": "docs/protocol_alternatives_audit.md",
+    "artifact": "results/protocol_alternatives_verified_2026-10-12/manifest.json",
+    "conditional_candidates": {
+      "train": 50,
+      "validation": 15,
+      "test": 14
+    },
+    "status": "coverage only; not finalized eligibility or economic feasibility"
+  },
+  "inherited_settings_review": "Models, seeds, search budgets, fees, universe, calendar and partitions retained from v2; baseline applicability and statistical reporting must be checked against the new masks.",
+  "baseline_missing_data_rules": {
+    "cash": "same session denominator and clock, always no orders",
+    "equal_allocation_single_entry": "one intention at actual causal entry, no retries of expired components; common daily exit",
+    "ten_interval_momentum_and_reversal": "require valid observed endpoints at q and q-10 per asset; otherwise hold that component; never interpolate",
+    "uniform_random_actions": "same seeds and raw N-action vector, then identical masking and budgeting",
+    "all_baselines": "same fees, per-level capacity, observed marking, causal entry, daily exit and strategy-independent data eligibility"
+  }
+}
