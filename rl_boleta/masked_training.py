@@ -58,7 +58,7 @@ def evaluate_period(model, sessions, encoder, first, last, **economic_options):
     return tuple(results)
 
 
-def run_synthetic_smoke(output, steps=384, seed=0, algorithm="PPO", *, wind_down_points=1,reward_objective='marked_wealth',account_regime='legacy_reinvest'):
+def run_synthetic_smoke(output, steps=384, seed=0, algorithm="PPO", *, wind_down_points=1,reward_objective='marked_wealth',account_regime='legacy_reinvest',device='cpu'):
     import numpy as np
     import torch
     from .algorithm_builders import build_agent, describe_agent
@@ -79,7 +79,7 @@ def run_synthetic_smoke(output, steps=384, seed=0, algorithm="PPO", *, wind_down
     options=dict(wind_down_points=wind_down_points,reward_objective=reward_objective,account_regime=account_regime)
     check_env(MaskedTrainingEnv(sessions, encoder, **options), warn=True)
     env = MaskedTrainingEnv(sessions, encoder, **options)
-    model = build_agent(algorithm, env, seed, smoke=True)
+    model = build_agent(algorithm, env, seed, smoke=True, device=device)
     effective_settings = describe_agent(model)
     class ClipAudit(BaseCallback):
         def __init__(self):
@@ -103,8 +103,10 @@ def run_synthetic_smoke(output, steps=384, seed=0, algorithm="PPO", *, wind_down
     initial_parameters = torch.cat([p.detach().flatten() for p in model.policy.parameters()]).clone()
     actor = model.actor if algorithm in ('SAC', 'DDPG') else model.policy.mlp_extractor.policy_net
     initial_actor = torch.cat([p.detach().flatten() for p in actor.parameters()]).clone()
+    if device == 'cuda':torch.cuda.synchronize()
     started = time.monotonic()
     model.learn(total_timesteps=steps, callback=clipping)
+    if device == 'cuda':torch.cuda.synchronize()
     wall = time.monotonic()-started
     final_parameters = torch.cat([p.detach().flatten() for p in model.policy.parameters()])
     final_actor = torch.cat([p.detach().flatten() for p in actor.parameters()])
@@ -128,7 +130,7 @@ def run_synthetic_smoke(output, steps=384, seed=0, algorithm="PPO", *, wind_down
             raise RuntimeError('replay terminal-state or bootstrap audit failed')
     model.save(output/'model.zip')
     normalizer.save(output/'normalizer.json')
-    restored = type(model).load(output/'model.zip', device='cpu')
+    restored = type(model).load(output/'model.zip', device=device)
     restored_normalizer = MaskedNormalizer.load(output/'normalizer.json')
     probe, _ = MaskedTrainingEnv(sessions, MaskedEncoder(restored_normalizer,include_account_context=context), **options).reset(seed=seed)
     before, _ = model.predict(probe, deterministic=True)
@@ -187,6 +189,7 @@ def main():
     parser.add_argument('--reward-objective', choices=('marked_wealth','terminal_cash_utility'),default='marked_wealth')
     parser.add_argument('--account-regime', choices=('legacy_reinvest','cash_settled','intraday_buying_power'),default='legacy_reinvest')
     parser.add_argument('--algorithm', choices=('PPO', 'A2C', 'SAC', 'DDPG', 'ALL'), default='PPO')
+    parser.add_argument('--device', choices=('cpu','cuda'), default='cpu')
     args = parser.parse_args()
     if args.algorithm == 'ALL':
         args.output.mkdir(parents=True, exist_ok=False)
@@ -195,7 +198,7 @@ def main():
         destination = args.output/algorithm if args.algorithm == 'ALL' else args.output
         report = run_synthetic_smoke(destination, args.steps, args.seed, algorithm,
                                      wind_down_points=args.wind_down_points,reward_objective=args.reward_objective,
-                                     account_regime=args.account_regime)
+                                     account_regime=args.account_regime,device=args.device)
         print(json.dumps({k: report[k] for k in ('status', 'algorithm', 'realized_transitions',
                                                'policy_changed', 'checkpoint_prediction_identical')}), flush=True)
         summaries.append({k: report[k] for k in ('algorithm', 'requested_transitions',

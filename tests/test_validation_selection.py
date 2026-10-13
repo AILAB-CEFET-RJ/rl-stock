@@ -140,5 +140,8 @@ class ValidationSelectionTests(unittest.TestCase):
             self.assertFalse(a['eligible_for_final_refit']);self.assertEqual(trainer.call_count,6)
             b=execute('unused',out,scenarios=('all_gaps',),resume=True)
             self.assertEqual(a,b);self.assertEqual(trainer.call_count,6)
+            with patch('torch.cuda.is_available', return_value=True):
+                with self.assertRaisesRegex(ValueError, 'identical'):
+                    execute('unused',out,scenarios=('all_gaps',),resume=True,device='cuda')
             (out/'all_gaps/baselines.json').write_text('[]')
             with self.assertRaises(ValueError):execute('unused',out,scenarios=('all_gaps',),resume=True)

@@ -9,10 +9,10 @@ from datetime import date, timedelta
 from pathlib import Path
 
 
-def run_historical_smoke(output, normalizer_dir, scenario, steps=384, seed=0, algorithm="PPO"):
+def run_historical_smoke(output, normalizer_dir, scenario, steps=384, seed=0, algorithm="PPO", *, device='cpu'):
     import numpy as np
     import torch
-    from .algorithm_builders import build_agent, describe_agent
+    from .algorithm_builders import build_agent, describe_agent, resolve_device
     from stable_baselines3.common.env_checker import check_env
     from stable_baselines3.common.callbacks import BaseCallback
     from .historical_env import HistoricalTrainingEnv
@@ -20,6 +20,7 @@ def run_historical_smoke(output, normalizer_dir, scenario, steps=384, seed=0, al
 
     if type(steps) is not int or not 368 <= steps <= 4096:
         raise ValueError('historical smoke budget must be between 368 and 4096 transitions')
+    device = resolve_device(device)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     torch.set_num_threads(1)
@@ -28,7 +29,7 @@ def run_historical_smoke(output, normalizer_dir, scenario, steps=384, seed=0, al
     check_env(env, warn=True)
     # Keep checker resets/transitions separate from the learning accounting.
     env.sampling_order.clear();env.completed.clear()
-    model = build_agent(algorithm, env, seed, smoke=True)
+    model = build_agent(algorithm, env, seed, smoke=True, device=device)
     effective_settings = describe_agent(model)
     class ClipAudit(BaseCallback):
         def __init__(self):
@@ -52,8 +53,10 @@ def run_historical_smoke(output, normalizer_dir, scenario, steps=384, seed=0, al
     initial_parameters = torch.cat([p.detach().flatten() for p in model.policy.parameters()]).clone()
     actor = model.actor if algorithm in ('SAC', 'DDPG') else model.policy.mlp_extractor.policy_net
     initial_actor = torch.cat([p.detach().flatten() for p in actor.parameters()]).clone()
+    if device == 'cuda': torch.cuda.synchronize()
     started = time.monotonic()
     model.learn(total_timesteps=steps, callback=clipping)
+    if device == 'cuda': torch.cuda.synchronize()
     wall = time.monotonic()-started
     final_parameters = torch.cat([p.detach().flatten() for p in model.policy.parameters()])
     final_actor = torch.cat([p.detach().flatten() for p in actor.parameters()])
@@ -77,7 +80,7 @@ def run_historical_smoke(output, normalizer_dir, scenario, steps=384, seed=0, al
     normalizer.save(output/'normalizer.json')
     learning_sampling_order=list(env.sampling_order)
     learning_unfinished_session=str(env.session.day)
-    restored = type(model).load(output/'model.zip', device='cpu')
+    restored = type(model).load(output/'model.zip', device=device)
     restored_normalizer = HistoricalMaskedNormalizer.load(output/'normalizer.json')
     if restored_normalizer != normalizer:raise RuntimeError('normalizer snapshot mismatch')
     probe, _ = env.reset(seed=seed)
@@ -152,6 +155,7 @@ def main():
     parser.add_argument('--steps',type=int,default=384);parser.add_argument('--seed',type=int,default=0)
     parser.add_argument('--scenario',choices=('all_gaps','short_gaps','ALL'),default='ALL')
     parser.add_argument('--algorithm',choices=('PPO','A2C','SAC','DDPG','ALL'),default='ALL')
+    parser.add_argument('--device',choices=('cpu','cuda'),default='cpu')
     args=parser.parse_args();args.output.mkdir(parents=True,exist_ok=False)
     scenarios=('all_gaps','short_gaps') if args.scenario=='ALL' else (args.scenario,)
     algorithms=('PPO','A2C','SAC','DDPG') if args.algorithm=='ALL' else (args.algorithm,)
@@ -164,7 +168,7 @@ def main():
     try:
         for scenario in scenarios:
             for algorithm in algorithms:
-                report=run_historical_smoke(args.output/scenario/algorithm,args.normalizer_dir,scenario,args.steps,args.seed,algorithm)
+                report=run_historical_smoke(args.output/scenario/algorithm,args.normalizer_dir,scenario,args.steps,args.seed,algorithm,device=args.device)
                 summary={k:report[k] for k in ('status','scenario','algorithm','realized_transitions','updates',
                     'actor_changed','checkpoint_prediction_identical','replay_terminal_audit')}
                 print(json.dumps(summary),flush=True);summaries.append(summary);gc.collect()

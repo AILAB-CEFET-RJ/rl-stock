@@ -1,7 +1,7 @@
 # Consolidação da branch do pipeline v3
 
 > Registro **040** · Data de referência: **2026-10-13** · [Índice](README.md)
-> Anterior: [Registro 039](039_workstation02_canonical_rebuild.md) · Seguinte: próxima entrada 041, ainda não criada.
+> Anterior: [Registro 039](039_workstation02_canonical_rebuild.md) · Seguinte: [Registro 041](041_workstation02_coverage_reproduction.md).
 
 O usuário solicitou fechar `feat/missing-data-day-trading-v3`, incorporar seu
 conteúdo à `main` e, em seguida, clonar o repositório na workstation02.

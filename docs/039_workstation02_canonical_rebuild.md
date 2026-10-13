@@ -62,7 +62,22 @@ Após recompor o ambiente temporário, a suíte local passou com **266 testes em
 104,218 segundos**, sem falhas ou testes pulados. A proteção adicional do
 manifesto foi conferida depois com os seis testes específicos do adaptador,
 também sem falhas. Os hashes do bundle de referência foram reconferidos.
-A verificação remota dos dados canônicos completos ainda está pendente.
+A verificação remota dos dados canônicos completos foi confirmada pelo usuário
+em 13/10/2026, a partir do clone publicado da `main`, com
+`status=canonical_rebuild_verified`, 94 Parquet e 700.273 capturas aceitas.
+A comparação integral inclui também as rejeições. O relatório mantém
+`training_ready=false` e `full_budget_selection_authorized=false`.
+
+Hashes reportados pela workstation:
+
+- Bundle de referência: `61bfd317ed739954738d7969a565fa32caa0b32cfaaa7c5cbf53bd303b343cff`.
+- Código do verificador: `b45b6d568bcc99b4682103496996cff270402dba217506e4db2c8eca8e6c0edb`.
+- Novo manifesto canônico: `8ba3cf4c09ac57e5b8715125662d95b72ba07b9f9d3a3d9a9eb47a97cdf2f10b`.
+
+O usuário publicou a main, clonou o repositório em `~/ailab/rl-stock` e copiou
+para ele os Parquet já conferidos. O bundle de referência foi transferido
+separadamente do Mac. O resultado comprova a reconstrução com os caminhos
+remotos e a combinação remota de Pandas/PyArrow, sem reinterpretação do relógio.
 
 A primeira tentativa de regressão local encontrou os diretórios de dependências
 temporárias incompletos (sem os módulos NumPy/Gymnasium/SB3 efetivos); a instalação

@@ -1,6 +1,7 @@
 """Verify actual algorithm classes, optimizers, targets and exploration."""
 import importlib.util
 import unittest
+from unittest.mock import patch
 
 AVAILABLE = all(importlib.util.find_spec(n) for n in ('gymnasium', 'stable_baselines3', 'numpy'))
 
@@ -101,3 +102,17 @@ class AlgorithmTests(unittest.TestCase):
         for name, kwargs in [('TD3', {}), ('PPO', {'width': 32}), ('SAC', {'learning_rate': .1})]:
             with self.assertRaises(ValueError):
                 build_agent(name, None, 0, **kwargs)
+
+    def test_explicit_backend_rejects_auto_and_missing_cuda(self):
+        from rl_boleta.algorithm_builders import resolve_device
+        self.assertEqual(resolve_device('cpu'), 'cpu')
+        with self.assertRaises(ValueError):resolve_device('auto')
+        with patch('torch.cuda.is_available', return_value=False):
+            with self.assertRaisesRegex(RuntimeError, 'CUDA requested'):
+                resolve_device('cuda')
+
+    def test_default_backend_remains_cpu_and_is_recorded(self):
+        from rl_boleta.algorithm_builders import describe_agent
+        model = self.model('PPO', smoke=True)
+        self.assertEqual(str(model.device), 'cpu')
+        self.assertEqual(describe_agent(model)['device'], 'cpu')

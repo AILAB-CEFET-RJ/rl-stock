@@ -36,6 +36,8 @@ A preparação da workstation02 inclui [verificação do ambiente e CUDA](docs/0
 [reconstrução canônica com comparação integral](docs/039_workstation02_canonical_rebuild.md).
 O [registro de fechamento da branch v3](docs/040_v3_branch_integration.md)
 consolida o escopo entregue e as pendências para a campanha experimental.
+A escolha explícita CPU/CUDA e o benchmark dos parâmetros completos estão
+descritos no [registro 045](docs/045_compute_benchmark.md).
 
 O pipeline experimental está em reconstrução a partir da formulação do paper.
 O [escrutínio conceitual do manuscrito](docs/002_paper_conceptual_review.md)

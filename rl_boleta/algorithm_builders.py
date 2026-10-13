@@ -2,7 +2,17 @@
 ALGORITHMS = ('PPO', 'A2C', 'SAC', 'DDPG')
 
 
-def build_agent(algorithm, env, seed, width=64, learning_rate=1e-4, smoke=False):
+def resolve_device(device):
+    """Explicit backend only; never fall back silently when CUDA was requested."""
+    import torch
+    if device not in ('cpu', 'cuda'):
+        raise ValueError('device must be cpu or cuda')
+    if device == 'cuda' and not torch.cuda.is_available():
+        raise RuntimeError('CUDA requested but unavailable')
+    return device
+
+
+def build_agent(algorithm, env, seed, width=64, learning_rate=1e-4, smoke=False, *, device='cpu'):
     import numpy as np
     import torch
     from stable_baselines3 import PPO, A2C, SAC, DDPG
@@ -15,6 +25,7 @@ def build_agent(algorithm, env, seed, width=64, learning_rate=1e-4, smoke=False)
         raise ValueError('unsupported algorithm')
     if width not in (64, 128) or learning_rate not in (1e-4, 3e-4):
         raise ValueError('configuration outside frozen tuning grid')
+    device = resolve_device(device)
 
     def initialize(policy):
         for module in policy.modules():
@@ -47,7 +58,7 @@ def build_agent(algorithm, env, seed, width=64, learning_rate=1e-4, smoke=False)
 
     optimizer = dict(optimizer_class=torch.optim.Adam,
                      optimizer_kwargs=dict(betas=(.9, .999), eps=1e-5))
-    common = dict(env=env, seed=seed, device='cpu', learning_rate=learning_rate,
+    common = dict(env=env, seed=seed, device=device, learning_rate=learning_rate,
                   gamma=1, verbose=0)
     if algorithm in ('PPO', 'A2C'):
         policy = dict(net_arch=dict(pi=[width, width], vf=[width, width]),
@@ -90,7 +101,7 @@ def describe_agent(model):
         return [dict(lr=g['lr'], betas=list(g['betas']), eps=g['eps'],
                      weight_decay=g['weight_decay']) for g in optimizer.param_groups]
     name = type(model).__name__
-    result = dict(algorithm=name, policy_class=type(model.policy).__name__, gamma=model.gamma,
+    result = dict(algorithm=name, device=str(model.device), policy_class=type(model.policy).__name__, gamma=model.gamma,
                   learning_rate=model.learning_rate, policy_kwargs=repr(model.policy_kwargs),
                   initialization='Xavier uniform gain=1, zero biases; SAC log_std head zero',
                   observation_normalization='frozen external', reward_normalization=False)

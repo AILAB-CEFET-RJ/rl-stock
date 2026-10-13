@@ -52,6 +52,11 @@ A coluna “Nome anterior” permite localizar referências preservadas em proto
 | 038 | 2026-10-13 | [Testes na workstation02 e transferência dos Parquet](038_workstation02_tests_and_raw_transfer.md) | — |
 | 039 | 2026-10-13 | [Reconstrução canônica com caminhos da workstation02](039_workstation02_canonical_rebuild.md) | — |
 | 040 | 2026-10-13 | [Consolidação da branch do pipeline v3](040_v3_branch_integration.md) | — |
+| 041 | 2026-10-13 | [Reprodução da cobertura original na workstation02](041_workstation02_coverage_reproduction.md) | — |
+| 042 | 2026-10-13 | [Grade parcial v3 reconstruída na workstation02](042_workstation02_partial_grid.md) | — |
+| 043 | 2026-10-13 | [Perfis de conta e manifestos de datas na workstation02](043_workstation02_account_inputs.md) | — |
+| 044 | 2026-10-13 | [Treinos históricos curtos na workstation02](044_workstation02_historical_smoke.md) | — |
+| 045 | 2026-10-13 | [Escolha CPU/CUDA e benchmark dos parâmetros completos](045_compute_benchmark.md) | — |
 
 ## Guias com nomes estáveis
 
@@ -60,7 +65,7 @@ A coluna “Nome anterior” permite localizar referências preservadas em proto
 
 ## Como registrar novos passos
 
-1. Acrescentar o próximo ID disponível, sem renumerar ou reutilizar IDs existentes. O próximo é **041**.
+1. Acrescentar o próximo ID disponível, sem renumerar ou reutilizar IDs existentes. O próximo é **046**.
 2. Criar `NNN_assunto.md` com data, propósito, resultado, verificação e pendências. Incluir links para o índice e a entrada anterior.
 3. Acrescentar uma linha nesta tabela e atualizar o link “Seguinte” do último registro.
 4. Em uma atualização do mesmo assunto, registrar sua data no arquivo e conservar o ID. Uma nova etapa ou emenda recebe uma entrada nova.

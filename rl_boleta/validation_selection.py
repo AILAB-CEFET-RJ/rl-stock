@@ -202,7 +202,8 @@ def train_job(context,job,steps,diagnostic,destination):
     from .historical_normalization import HistoricalMaskedNormalizer
     from stable_baselines3.common.callbacks import BaseCallback
     destination.mkdir(parents=True,exist_ok=False);env=HistoricalTrainingEnv(context.env.normalizer_dir,job['scenario'])
-    model=build_agent(job['algorithm'],env,job['seed'],job['width'],job['learning_rate'],smoke=diagnostic)
+    device=job.get('device','cpu')
+    model=build_agent(job['algorithm'],env,job['seed'],job['width'],job['learning_rate'],smoke=diagnostic,device=device)
     actor=model.actor if job['algorithm'] in ('SAC','DDPG') else model.policy.mlp_extractor.policy_net
     initial=torch.cat([p.detach().flatten() for p in actor.parameters()]).clone()
     class TerminalAudit(BaseCallback):
@@ -218,7 +219,7 @@ def train_job(context,job,steps,diagnostic,destination):
     if torch.equal(initial,final) or any(not torch.isfinite(p).all() for p in model.policy.parameters()) or not env.completed:
         raise RuntimeError('actor did not update, nonfinite weights or no complete episode')
     model.save(destination/'model.zip');env.encoder.normalizer.save(destination/'normalizer.json')
-    restored=type(model).load(destination/'model.zip',device='cpu',custom_objects={'buffer_size':1})
+    restored=type(model).load(destination/'model.zip',device=device,custom_objects={'buffer_size':1})
     if HistoricalMaskedNormalizer.load(destination/'normalizer.json')!=env.encoder.normalizer:
         raise RuntimeError('normalizer checkpoint mismatch')
     sampling=list(env.sampling_order);probe,_=env.reset(seed=job['seed'])
@@ -232,11 +233,15 @@ def train_job(context,job,steps,diagnostic,destination):
     (destination/'report.json').write_text(json.dumps(report,indent=2,allow_nan=False)+'\n');return report
 
 
-def execute(normalizer_dir,output,*,mode='diagnostic',algorithms=('PPO',),scenarios=('all_gaps','short_gaps'),steps=None,resume=False):
+def execute(normalizer_dir,output,*,mode='diagnostic',algorithms=('PPO',),scenarios=('all_gaps','short_gaps'),steps=None,resume=False,device='cpu'):
     import torch
+    from .algorithm_builders import resolve_device
+    device=resolve_device(device)
     normalizer_dir,output=map(Path,(normalizer_dir,output));torch.set_num_threads(1)
     contexts={s:ValidationContext(normalizer_dir,s) for s in scenarios}
     protocol=next(iter(contexts.values())).protocol;plan=make_plan(protocol,mode,algorithms,scenarios,steps)
+    plan['device']=device
+    for job in plan['jobs']:job['device']=device
     plan['inputs_sha256']={p:h for c in contexts.values() for p,h in c.anchors.items()}
     plan['source_sha256']={str(p):digest(p) for p in (Path(__file__),Path(__file__).with_name('algorithm_builders.py'),
         Path(__file__).with_name('historical_env.py'),Path(__file__).with_name('masked_observations.py'),Path(__file__).with_name('masked_baselines.py'),Path(__file__).with_name('missing_data_replay.py'),Path(__file__).with_name('cached_observations.py'))}
@@ -286,7 +291,7 @@ def execute(normalizer_dir,output,*,mode='diagnostic',algorithms=('PPO',),scenar
                     if report['status']!='trained_awaiting_validation':continue
                     name=f"{algorithm}_w{report['width']}_lr{report['learning_rate']}_seed{report['seed']}"
                     folder=output/scenario/name
-                    models[name]=getattr(sb3,algorithm).load(folder/'model.zip',device='cpu',custom_objects={'buffer_size':1})
+                    models[name]=getattr(sb3,algorithm).load(folder/'model.zip',device=device,custom_objects={'buffer_size':1})
                     pending.append((name,folder,report))
             if models:
                 evaluated=contexts[scenario].evaluate_many(models)
@@ -325,9 +330,10 @@ def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--normalizer-dir',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True);p.add_argument('--mode',choices=('diagnostic','protocol'),default='diagnostic')
     p.add_argument('--algorithm',choices=(*ALGORITHMS,'ALL'),default='PPO');p.add_argument('--scenario',choices=('all_gaps','short_gaps','ALL'),default='ALL')
-    p.add_argument('--steps',type=int);p.add_argument('--resume',action='store_true');a=p.parse_args()
+    p.add_argument('--steps',type=int);p.add_argument('--resume',action='store_true')
+    p.add_argument('--device',choices=('cpu','cuda'),default='cpu');a=p.parse_args()
     execute(a.normalizer_dir,a.output,mode=a.mode,algorithms=ALGORITHMS if a.algorithm=='ALL' else (a.algorithm,),
-        scenarios=('all_gaps','short_gaps') if a.scenario=='ALL' else (a.scenario,),steps=a.steps,resume=a.resume)
+        scenarios=('all_gaps','short_gaps') if a.scenario=='ALL' else (a.scenario,),steps=a.steps,resume=a.resume,device=a.device)
 
 
 if __name__=='__main__':main()
