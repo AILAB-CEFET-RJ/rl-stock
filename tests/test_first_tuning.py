@@ -12,6 +12,23 @@ from rl_boleta.first_tuning import run
 
 
 class FirstTuningTests(unittest.TestCase):
+    def test_remaining_registered_seeds_use_distinct_destinations(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);inputs=self.fixture(root)
+            for seed in (1,2):
+                with self.subTest(seed=seed), patch('torch.cuda.is_available',return_value=True), \
+                     patch('rl_boleta.first_tuning.train_job',return_value=dict(realized_transitions=501760)) as worker, \
+                     redirect_stdout(io.StringIO()):
+                    state=run(root/f'seed{seed}',inputs,seed=seed)
+                _,job,steps,diagnostic,out=worker.call_args.args
+                self.assertEqual(job['seed'],seed)
+                self.assertEqual(out.name,f'PPO_w128_lr1e-4_seed{seed}')
+                self.assertEqual(steps,500000)
+                self.assertFalse(state['eligible_for_final_refit'] or diagnostic)
+            with patch('rl_boleta.first_tuning.train_job') as worker:
+                with self.assertRaises(ValueError):run(root/'invalid',inputs,seed=3)
+                worker.assert_not_called()
+
     def fixture(self, root):
         inputs = root / 'inputs'; inputs.mkdir()
         template = json.loads(Path('configs/experimental_protocol_v3.json').read_text())

@@ -1,4 +1,4 @@
-"""Launch the first registered CUDA tuning fit; no validation or final selection."""
+"""Launch a registered PPO CUDA tuning seed; no validation or final selection."""
 import json, os, signal, subprocess, threading, time
 from pathlib import Path
 from types import SimpleNamespace
@@ -8,9 +8,12 @@ from .masked_preparation import verify
 from .validation_selection import train_job
 
 
-def run(root=Path("results/ws02_first_tuning_v1"), inputs=Path("results/ws02_account_campaign_inputs_2026-10-13")):
+def run(root=Path("results/ws02_first_tuning_v1"), inputs=Path("results/ws02_account_campaign_inputs_2026-10-13"), *, seed=0):
+    if type(seed) is not int or seed not in (0, 1, 2):
+        raise ValueError("Seed deve pertencer ao desenho congelado: 0, 1 ou 2")
+    destination = root / f"PPO_w128_lr1e-4_seed{seed}"
     state_path = root / "launch.json"
-    if state_path.exists() or (root / "PPO_w128_lr1e-4_seed0").exists():
+    if state_path.exists() or destination.exists():
         raise FileExistsError("Esta execução já foi registrada; preserve seus arquivos.")
     m = json.loads((inputs / "manifest.json").read_text())
     if (m["status"] != "account_profile_inputs_and_train_probes_verified"
@@ -25,7 +28,7 @@ def run(root=Path("results/ws02_first_tuning_v1"), inputs=Path("results/ws02_acc
     proto = json.loads(proto_path.read_text())
     normalizers = Path(campaign["normalizer_output_dir"])
     job = dict(scenario="all_gaps", algorithm="PPO", width=128,
-               learning_rate=1e-4, seed=0, device="cuda")
+               learning_rate=1e-4, seed=seed, device="cuda")
     steps = proto["training"]["tuning_steps_per_fit"]
     if (steps != 500000 or job["width"] not in proto["models"]["hidden_width_candidates"]
             or job["learning_rate"] not in proto["models"]["learning_rate_candidates"]
@@ -62,8 +65,7 @@ def run(root=Path("results/ws02_first_tuning_v1"), inputs=Path("results/ws02_acc
     previous_handler = signal.signal(signal.SIGTERM, terminated)
     try:
         context = SimpleNamespace(env=SimpleNamespace(normalizer_dir=normalizers))
-        report = train_job(context, job, steps, False,
-                           root / "PPO_w128_lr1e-4_seed0")
+        report = train_job(context, job, steps, False, destination)
         state.update(status="trained_awaiting_validation",
                      realized_steps=report["realized_transitions"])
         print(json.dumps(state), flush=True)
@@ -82,8 +84,9 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output-root", type=Path, default=Path("results/ws02_first_tuning_v1"))
     p.add_argument("--inputs-dir", type=Path, default=Path("results/ws02_account_campaign_inputs_2026-10-13"))
+    p.add_argument("--seed", type=int, choices=(0, 1, 2), default=0)
     a=p.parse_args()
-    run(a.output_root, a.inputs_dir)
+    run(a.output_root, a.inputs_dir, seed=a.seed)
 
 
 if __name__ == "__main__":

@@ -60,6 +60,7 @@ A coluna “Nome anterior” permite localizar referências preservadas em proto
 | 046 | 2026-10-13 | [Plano operacional CUDA e primeiro ajuste completo](046_cuda_campaign_plan.md) | — |
 | 047 | 2026-10-13 | [Primeiro ajuste PPO e checkpoint copiado ao Mac](047_first_tuning_checkpoint.md) | — |
 | 048 | 2026-10-13 | [Avaliação congelada do primeiro checkpoint](048_first_checkpoint_validation.md) | — |
+| 049 | 2026-10-13 | [Completar as seeds do primeiro candidato PPO](049_remaining_ppo_seeds.md) | — |
 
 ## Guias com nomes estáveis
 
@@ -68,7 +69,7 @@ A coluna “Nome anterior” permite localizar referências preservadas em proto
 
 ## Como registrar novos passos
 
-1. Acrescentar o próximo ID disponível, sem renumerar ou reutilizar IDs existentes. O próximo é **049**.
+1. Acrescentar o próximo ID disponível, sem renumerar ou reutilizar IDs existentes. O próximo é **050**.
 2. Criar `NNN_assunto.md` com data, propósito, resultado, verificação e pendências. Incluir links para o índice e a entrada anterior.
 3. Acrescentar uma linha nesta tabela e atualizar o link “Seguinte” do último registro.
 4. Em uma atualização do mesmo assunto, registrar sua data no arquivo e conservar o ID. Uma nova etapa ou emenda recebe uma entrada nova.
