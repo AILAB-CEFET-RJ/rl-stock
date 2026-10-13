@@ -207,7 +207,7 @@ class ExecutionEngine:
         self.validate_frame(frame)
         self._captures.update({(b.ticker, b.snapshot_id): b for b in frame.books})
 
-    def execute(self, portfolio, desired, observed_midpoints, frame, kind="regular"):
+    def execute(self, portfolio, desired, observed_midpoints, frame, kind="regular", *, buying_cash_limit=None):
         self.validate_frame(frame)
         desired = tuple(desired)
         mids = tuple(number(p) for p in observed_midpoints)
@@ -216,9 +216,12 @@ class ExecutionEngine:
             raise ValueError("invalid execution request")
         with localcontext() as ctx:
             ctx.prec = 50
-            return self._execute(portfolio, desired, mids, frame, kind)
+            if buying_cash_limit is not None:
+                buying_cash_limit=number(buying_cash_limit)
+                if buying_cash_limit<0:raise ValueError('negative buying cash limit')
+            return self._execute(portfolio, desired, mids, frame, kind, buying_cash_limit)
 
-    def _execute(self, portfolio, desired, mids, frame, kind):
+    def _execute(self, portfolio, desired, mids, frame, kind, buying_cash_limit=None):
         used = dict(self._used)  # commit only after all accounting checks succeed
         cash, holdings = portfolio.cash, list(portfolio.holdings)
         fills, outcomes = [], {}
@@ -273,7 +276,7 @@ class ExecutionEngine:
         for i, d in enumerate(desired):
             if d < 0:
                 walk(i, False)
-        sale_cash = cash
+        sale_cash = cash if buying_cash_limit is None else min(cash,buying_cash_limit)
         total = sum((d * p for d, p in zip(desired, mids) if d > 0), Decimal(0))
         for i, d in enumerate(desired):
             if d > 0:

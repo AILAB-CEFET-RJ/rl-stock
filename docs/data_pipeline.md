@@ -1,5 +1,11 @@
 # Preparação dos dados para os novos experimentos
 
+Para a migração do histórico para a workstation02, consultar
+[testes e transferência bruta](038_workstation02_tests_and_raw_transfer.md) e
+[reconstrução canônica com verificação de equivalência](039_workstation02_canonical_rebuild.md).
+Os derivados originais mantêm caminhos do Mac; a reconstrução em outra raiz
+deve produzir novos artefatos e preservar as referências congeladas.
+
 Esta etapa é independente dos CSVs processados e resultados da dissertação. Nenhum
 arquivo de `data/` é descoberto ou consumido automaticamente. Os módulos antigos
 de conversão e treinamento ainda são legados; não devem ser usados para validar
@@ -43,7 +49,7 @@ Em `collect/crawler.py`, a coleta:
 - inclui um horário associado aos negócios recentes, que não comprova o horário
   de mercado do livro inteiro.
 
-Esses riscos motivaram uma [auditoria dos Parquet brutos](raw_data_audit.md).
+Esses riscos motivaram uma [auditoria dos Parquet brutos](001_raw_data_audit.md).
 A varredura confirmou a preservação da estrutura das capturas e permite
 reconstrução parcial, preservando a ordem original, sem reutilizar os CSVs
 processados. Não há necessidade demonstrada de uma nova coleta neste momento.
@@ -290,7 +296,7 @@ estado inicial de carteira serão definidos no simulador.
 política. Não se pode informar antecipadamente o tempo até uma lacuna imprevista
 nem liquidar retroativamente no minuto anterior a ela. Horizonte fixo conhecido,
 fim de pregão e detecção efetiva de falta de dados exigem regras distintas,
-conforme o [escrutínio conceitual do paper](paper_conceptual_review.md).
+conforme o [escrutínio conceitual do paper](002_paper_conceptual_review.md).
 Não há filtros de retorno entre snapshots: detecção de saltos e reconciliação
 com outra fonte ainda são necessárias para auditar a qualidade de uma coleta
 real. Consistência estrutural não comprova que uma cotação esteja correta.
@@ -315,7 +321,7 @@ de microestrutura do paper, cuja implementação será a próxima etapa.
 
 ## Verificação
 
-A [auditoria integral de cobertura](session_coverage_audit.md) aplica o contrato
+A [auditoria integral de cobertura](012_session_coverage_audit.md) aplica o contrato
 e o calendário a março–julho de 2025, mantendo as hipóteses de relógio explícitas.
 Seus manifestos por partição medem elegibilidade de dados sem executar políticas
 ou produzir retornos históricos.

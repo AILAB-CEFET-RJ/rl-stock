@@ -79,7 +79,7 @@
     "source_delay_interpretation": "no established fixed lag; do not subtract three hours",
     "collection_timezone_status": "hypothesis",
     "trade_timezone_status": "hypothesis",
-    "timing_evidence": "docs/clock_transition_audit.md",
+    "timing_evidence": "docs/014_clock_transition_audit.md",
     "source_book_timestamp_verified": false
   },
   "episode": {
@@ -112,13 +112,13 @@
     "gap_behavior": "keep the same daily clock, cash and inventory; mask unavailable assets, expire affected fills",
     "all_assets_unavailable": "advance scheduled time with zero executable orders and held marks; do not infer zero true market return",
     "exit_coverage": "all 18 assets have accepted captures received since opening with receipt age <=60 seconds",
-    "eligible_coverage": "causal entry with sufficient remaining steps plus common terminal coverage; gap cap unresolved",
+    "eligible_coverage": "first causal joint warmup with >=2 remaining transitions and common covered scheduled exit; no additional duration exclusion in primary conditional analysis",
     "eligibility_not_policy_input": true,
     "financial_comparison": "common strategy-independent data-eligible dates, retaining stops and liquidation failures",
     "missing_exit": "data truncation with inventory preserved; no retroactive sale or complete-day return",
     "short_blocks": "rollout boundaries may update learning without resetting portfolio or liquidating",
     "long_gap_policy": {
-      "status": "unresolved_before_training",
+      "status": "frozen_for_conditional_v3_simulation",
       "primary_cap_minutes": null,
       "diagnostic_grid_missing_run_caps": [
         1,
@@ -127,7 +127,14 @@
         15,
         30
       ],
-      "choose_using": "risk and observation justification with training-only diagnostics; not desired test count"
+      "choose_using": "risk and observation justification with training-only diagnostics; not desired test count",
+      "primary_mode": "masked_all_gaps",
+      "cap_unit": "consecutive missing one-minute grid points, not exact receipt or market-time age",
+      "decision_basis": "Model incomplete observation explicitly; train-only diagnostics cannot establish a safe duration or bound unseen prices. Do not remove difficult observation paths from the primary estimand.",
+      "diagnostics": "results/v3_train_gap_diagnostics_2026-10-12/diagnostics.json",
+      "sensitivity_scope": "paired summaries of the same frozen policies on predefined common subsets; no retraining or hyperparameter selection",
+      "no_risk_bound_claim": true,
+      "two_scenario_design": "experimental_scenarios; all-gaps primary rule retained; separately fitted cap-2 secondary scenario"
     }
   },
   "normalization": {
@@ -142,7 +149,9 @@
     ],
     "portfolio_scale": "initial_capital",
     "future_or_test_statistics": false,
-    "per_feature_valid_counts": true
+    "per_feature_valid_counts": true,
+    "runtime_fit_gate": "scenario-bound historical train normalizers and train-only Gym adapter implemented; final-refit statistics require validation-selected models; synthetic generic APIs stay separate",
+    "train_artifact": "results/v3_historical_train_normalizers_2026-10-12/manifest.json"
   },
   "models": {
     "algorithms": [
@@ -246,7 +255,7 @@
     ],
     "final_steps_per_fit": 1000000,
     "sampling": "uniform common data-eligible daily session with replacement; actual causal entry, continuous portfolio, no intraday reset",
-    "selection": "mean net terminal marked-wealth score on common validation dates across tuning seeds; flat completion and proxy-risk metrics mandatory",
+    "selection": "After exit/learning/account amendment is frozen and verified: require flat closure across every common validation date and tuning seed, then maximize mean net realized cash return; retain all failed candidates in diagnostics.",
     "ties": [
       "lower mean maximum drawdown",
       "smaller hidden width",
@@ -255,7 +264,18 @@
     "incomplete_seed_set": "candidate ineligible; failures reported; no replacement search",
     "budget_rounding": "at most rollout_steps-1 additional transitions, report actual counts",
     "checkpoint": "fixed final budget",
-    "evaluation": "deterministic with no online updates; common data-eligible daily dates, explicit missing-data and liquidation-failure reporting"
+    "evaluation": "deterministic with no online updates; common data-eligible daily dates, explicit missing-data and liquidation-failure reporting",
+    "historical_integration_artifact": "results/v3_historical_training_smoke_verified_2026-10-12/manifest.json",
+    "validation_executor": {
+      "module": "rl_boleta.validation_selection",
+      "scope": "core PPO A2C SAC DDPG in both scenarios; discount/observation variants pending",
+      "diagnostic_artifact": "results/v3_validation_selection_diagnostic_verified_2026-10-12/manifest.json",
+      "diagnostic_fits": 12,
+      "diagnostic_refit_authorization": false,
+      "protocol_core_fits": 96,
+      "protocol_core_requested_transitions": 48000000,
+      "protocol_selection_completed": false
+    }
   },
   "baselines": [
     "cash",
@@ -265,7 +285,7 @@
     "uniform_random_actions_seeds_100_to_109"
   ],
   "outcomes": {
-    "primary": "net terminal marked-wealth score on common data-eligible session subset; not necessarily a fully liquidated return",
+    "primary": "Revised target: realized net cash return for flat-compliant methods on all common dates; marked outcomes with residuals remain diagnostic, without successful-date filtering.",
     "aggregation": "one outcome per session; equal mean across evaluable sessions and training seeds; daily fixed-capital reset, no compounding",
     "primary_contrast": "PPO minus equal-allocation single-entry baseline, average across final seeds",
     "secondary": [
@@ -354,18 +374,32 @@
     "mandatory_availability_fields": "retain masks and ages in every observation ablation; never present masked zeros as ordinary market features"
   },
   "planned_fits": {
-    "main_tuning": 48,
-    "main_final": 40,
-    "variants_tuning": 60,
-    "variants_final": 50,
-    "total": 198,
-    "requested_environment_transitions": 144000000,
-    "status": "inherited planning estimate; no v3 fit authorized by this proposal"
+    "all_gaps": {
+      "main_tuning": 48,
+      "main_final": 40,
+      "variants_tuning": 60,
+      "variants_final": 50,
+      "total": 198,
+      "requested_environment_transitions": 144000000
+    },
+    "short_gaps": {
+      "main_tuning": 48,
+      "main_final": 40,
+      "variants_tuning": 0,
+      "variants_final": 0,
+      "total": 88,
+      "requested_environment_transitions": 64000000
+    },
+    "total": 286,
+    "requested_environment_transitions": 208000000,
+    "cross_scenario_evaluation_additional_fits": 0,
+    "baselines_additional_fits": 0,
+    "status": "planning only; historical smoke and diagnostic validation runs completed separately; protocol-budget selection, variants and final refit pending"
   },
   "amendments": "Version and justify before reward-based selection; once July policy outcomes are inspected, subsequent amendments make July analysis exploratory.",
   "supersedes": "candidate replacement for v2 after review; v2 remains active until approval and implementation",
   "observation_encoder": {
-    "schema": "proposed-masked-market-40-plus-three-availability-fields-v3",
+    "schema": "masked-market-40-plus-three-availability-fields-v3",
     "asset_feature_order": [
       "bid_price_1..5",
       "bid_size_1..5",
@@ -388,7 +422,7 @@
     "context_width": "N+4",
     "flattened_width_18_assets": 15502,
     "fit_grid": "unique valid market features appearing in episode histories from first feature point through exit, common fitting dates only",
-    "runtime_status": "not implemented; v2 encoder remains unchanged"
+    "runtime_status": "historical training integration and core validation executor verified diagnostically; protocol-budget selection, variants and final refit pending"
   },
   "schema_version": 3,
   "based_on": {
@@ -419,7 +453,8 @@
     "context": "cash, N marked exposures, marked wealth / initial capital; elapsed and remaining minutes /390",
     "normalizer_fit": "per-market-feature valid observations only from common eligible training dates; unique grid points, exclude masked sentinels",
     "no_auto_rewarm_after_entry": true,
-    "initial_reference": "21 complete readiness points guarantee causal references for the first 20-row window"
+    "initial_reference": "21 complete readiness points guarantee causal references for the first 20-row window",
+    "reference_checkpoint": "latest valid same-asset points as of lag_reference; bounded history retains older causal reference and its grid timestamp"
   },
   "orders_with_missing_data": {
     "decision": "force unavailable asset action components to zero before desired orders and shared-cash budgeting",
@@ -467,7 +502,7 @@
     "All algorithms and baselines use identical causal entry, masks, exit and eligible dates"
   ],
   "audit_evidence": {
-    "report": "docs/protocol_alternatives_audit.md",
+    "report": "docs/017_protocol_alternatives_audit.md",
     "artifact": "results/protocol_alternatives_verified_2026-10-12/manifest.json",
     "conditional_candidates": {
       "train": 50,
@@ -483,5 +518,141 @@
     "ten_interval_momentum_and_reversal": "require valid observed endpoints at q and q-10 per asset; otherwise hold that component; never interpolate",
     "uniform_random_actions": "same seeds and raw N-action vector, then identical masking and budgeting",
     "all_baselines": "same fees, per-level capacity, observed marking, causal entry, daily exit and strategy-independent data eligibility"
+  },
+  "experimental_scenarios": {
+    "status": "frozen_design_historical_fitting_pending",
+    "primary": "all_gaps",
+    "secondary": "short_gaps",
+    "scenarios": {
+      "all_gaps": {
+        "role": "primary",
+        "primary_mode": "masked_all_gaps",
+        "cap_grid_points": null,
+        "algorithms": [
+          "PPO",
+          "A2C",
+          "SAC",
+          "DDPG"
+        ],
+        "variants": "all planned PPO ablations and discount variants"
+      },
+      "short_gaps": {
+        "role": "secondary",
+        "primary_mode": "bounded_grid_gap",
+        "cap_grid_points": 2,
+        "algorithms": [
+          "PPO",
+          "A2C",
+          "SAC",
+          "DDPG"
+        ],
+        "variants": "core algorithms only; no additional ablation fits"
+      }
+    },
+    "short_gap_definition": "At most two consecutive unavailable one-minute grid points per asset after causal entry through scheduled exit; not a receipt-age bound or a total missing-data fraction bound.",
+    "short_gap_justification": "Operational few-step dropout convention at one-minute decision resolution, small relative to the 20-row history. Training diagnostics show one/two-point gaps dominate. Not a safe-loss threshold or chosen using protected policy returns; coverage counts were already known.",
+    "independent_fitting": "Fit train normalizers and tune each algorithm independently per scenario, with identical grids, seeds, transition budgets and economics; select using that scenario validation dates.",
+    "final_refit": "After validation selection, fit a new normalizer on that scenario train+validation dates and train final seeds; no test data in fitting.",
+    "native_evaluation": "Every algorithm and matched baseline on the common eligible test dates inside its own scenario.",
+    "cross_scenario_evaluation": "Evaluate both scenario-trained frozen model sets and matched baselines on the intersection of eligible test dates, pairing algorithm and training seed; no online updates or extra training.",
+    "cross_normalizers": "Each checkpoint keeps its own scenario/refit normalizer even on common dates; do not refit normalization on evaluation dates.",
+    "interpretation": "Common-date comparison removes date-composition differences, but changes training data, normalizers and selected hyperparameters jointly; do not attribute all changes solely to gap duration.",
+    "sensitivities": "Existing caps 1,2,5,15,30 remain subset-only analyses of all-gaps frozen models. The independently trained short-gaps scenario is distinct from the cap-2 subset sensitivity.",
+    "test_reporting": "Descriptive paired outcomes and seed variability; no confirmatory secondary superiority claim."
+  },
+  "day_trading_review": {
+    "revision_id": "day-trading-admission-review-2026-10-12",
+    "status": "pending_compute_review_and_research_protocol_consolidation",
+    "admissibility_rule": "flat_all_common_validation_seed_sessions",
+    "criterion": "Every tuning seed must end all common validation sessions with zero integer holdings and a finite realized cash return; failures remain reported, never remove dates.",
+    "future_liquidation_guaranteed": false,
+    "selection_amendment_after_diagnostic_validation": true,
+    "full_budget_selection_blocked": true,
+    "exit_preparation": "Specify a causal shared wind-down rule with repeated depth-limited sales; timing and inventory controls require training-only capacity audit, not validation-return optimization.",
+    "learning_objective": {
+      "status": "synthetic_terminal_cash_utility_implemented_historical_activation_pending",
+      "reference_objective": "terminal_cash_utility",
+      "reference_gamma": 1,
+      "terminal_adjustment": "Subtract marked residual inventory value from the terminal learning reward only; never debit financial cash or remove inventory.",
+      "undiscounted_identity": "sum(reward) = reward_scale * (terminal_accounting_cash - initial_capital) / initial_capital",
+      "hard_inventory_constraint_guaranteed": false,
+      "validation_admissibility_still_required": true,
+      "truncation": "No terminal inventory adjustment; abort unexpected training truncation.",
+      "financial_metrics": "Keep marked wealth, holdings, fees and realized-return eligibility unchanged; learning utility is separately reported.",
+      "account_choice_pending": false,
+      "documentation": "docs/031_terminal_cash_utility.md",
+      "frozen_for_research_training": false,
+      "synthetic_smoke_artifact": "results/v3_terminal_cash_utility_smoke_2026-10-12/report.json",
+      "synthetic_verification": "242 regression tests; PPO 384-step smoke; Gym residual cases; historical activation pending account choice."
+    },
+    "account_model": "Both modes implemented and configurable via environment.account_regime in immutable protocols; new historical manifests and integration verification pending.",
+    "documentation": "docs/028_day_trading_admissibility_review.md",
+    "exit_capacity_audit": {
+      "status": "train_only_capacity_audit_completed",
+      "manifest": "results/v3_exit_capacity_audit_2026-10-12/manifest.json",
+      "module": "rl_boleta.exit_capacity_audit",
+      "proposed_wind_down_execution_points": 54,
+      "basis": "Maximum finite trailing capacity requirement across independent concentrated-capital training stress cases; not a safe future bound.",
+      "uncovered_entire_horizon_asset_sessions": 2,
+      "late_entry_policy": "Keep common dates; cash only if next execution is already in wind-down phase.",
+      "execution_rule_implemented": true,
+      "frozen_for_research_training": false,
+      "documentation": "docs/029_exit_capacity_audit.md",
+      "implementation_documentation": "docs/030_wind_down_implementation.md",
+      "activation": "Explicit wind_down_points=54 in new synthetic replay; immutable historical protocol field episode.wind_down_execution_points controls future bundles. Existing bundles remain at one point.",
+      "synthetic_integration_artifact": "results/v3_wind_down_synthetic_smoke_2026-10-12/suite_report.json",
+      "synthetic_integration_verified": true
+    }
+  },
+  "account_regimes": {
+    "status": "configurable_implementation_historical_rebinding_pending",
+    "user_decision": "Support both account modes; choose one per frozen campaign.",
+    "protocol_field": "environment.account_regime",
+    "supported_research_modes": [
+      "cash_settled",
+      "intraday_buying_power"
+    ],
+    "cash_settled": "Purchase costs including fees paid from unspent initial settled funds; sales remain pending and do not replenish intraday buying power.",
+    "intraday_buying_power": "Net sale proceeds may be reused; no negative economic cash or short holdings; intraday funding/netting access assumed, no extra financing fee modeled.",
+    "observation_fields": [
+      "buying_power_per_initial_capital",
+      "pending_sale_proceeds_per_initial_capital",
+      "intraday_regime_indicator"
+    ],
+    "policy_input_dimension_18_assets": 15505,
+    "full_off_policy_replay_array_bytes": 12412400000,
+    "legacy_mode": "legacy_reinvest only for reproducing old artifacts; never implicit for full research selection.",
+    "same_mode_for_models_and_baselines": true,
+    "both_modes_double_campaign_automatically": false,
+    "documentation": "docs/032_account_regimes.md",
+    "synthetic_artifacts": {
+      "cash_settled": "results/v3_cash_settled_smoke_2026-10-12/suite_report.json",
+      "intraday_buying_power": "results/v3_intraday_buying_power_smoke_2026-10-12/suite_report.json"
+    },
+    "synthetic_integration_verified": true,
+    "verification": "250 regression tests; eight four-algorithm/two-mode synthetic smokes; 24 flat frozen synthetic evaluations; artifact hashes verified.",
+    "historical_input_preparation": {
+      "manifest": "results/v3_account_campaign_inputs_2026-10-12/manifest.json",
+      "status": "account_profile_inputs_and_train_probes_verified",
+      "normalizer_bundles": 4,
+      "train_integration_probes": 12,
+      "market_statistics_match_original_train_bundle": true,
+      "full_budget_selection_authorized": false,
+      "documentation": "docs/033_account_campaign_inputs.md"
+    },
+    "historical_smoke": {
+      "status": "completed_after_frozen_replay_encoder_fix",
+      "artifacts": {
+        "cash_settled": "results/v3_historical_smoke_cash_settled_fixed_2026-10-12/manifest.json",
+        "intraday_buying_power": "results/v3_historical_smoke_intraday_buying_power_fixed_2026-10-12/manifest.json"
+      },
+      "fits": 16,
+      "requested_transitions": 6144,
+      "realized_transitions": 6148,
+      "frozen_train_evaluations": 40,
+      "distinct_frozen_train_dates": 4,
+      "full_budget_selection_authorized": false,
+      "documentation": "docs/034_historical_smoke_new_accounts.md"
+    }
   }
 }

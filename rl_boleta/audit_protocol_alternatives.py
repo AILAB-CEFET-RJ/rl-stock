@@ -151,7 +151,7 @@ def run(input_dir, protocol_path, output_dir):
         summary=dict(summary),partitions={k:dict(v) for k,v in partition_counts.items()},
         inputs=input_hashes,
         code_sha256={str(p):digest(p) for p in (Path(__file__),Path(__file__).with_name('session_replay.py'))},
-        timing_evidence='docs/clock_transition_audit.md; no additional fixed 3h correction',
+        timing_evidence='docs/014_clock_transition_audit.md; no additional fixed 3h correction',
         rules=dict(warmup_points=window,entry='first complete trailing joint warmup; never choose a later run using future coverage',
             minimum_remaining_transitions=2,exit='original scheduled liquidation minute, all 18 accepted books required',
             gaps='unavailable assets never assumed tradable; inventory continuity is a modeling requirement, not simulated here',
