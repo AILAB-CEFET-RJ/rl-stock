@@ -1,7 +1,7 @@
 # Escolha explícita CPU/CUDA e benchmark dos parâmetros completos
 
 > Registro **045** · Data de referência: **2026-10-13** · [Índice](README.md)
-> Anterior: [Registro 044](044_workstation02_historical_smoke.md) · Seguinte: próxima entrada 046, ainda não criada.
+> Anterior: [Registro 044](044_workstation02_historical_smoke.md) · Seguinte: [Registro 046](046_cuda_campaign_plan.md).
 
 Implementação na branch `feat/workstation-compute-benchmark`, depois de confirmar
 a preparação e os 16 treinos históricos curtos em CPU na workstation02.
@@ -105,3 +105,86 @@ perfil e proteção de retomada passaram em **seis testes de benchmark** e
 e `git diff --check` passou.
 Medições remotas e consolidação do orçamento
 experimental permanecem pendentes.
+
+## Primeiro benchmark remoto: PPO
+
+O usuário publicou a branch, atualizou o clone e confirmou duas execuções
+`compute_benchmark_completed` na workstation02, em CPU e CUDA. Ambas usam
+`cash_settled/all_gaps`, largura 128, seed 0, parâmetros completos, um rollout
+de aquecimento e 2.048 transições medidas, com dez épocas de atualização nessa
+fase. O buffer materializado soma 127.213.568 bytes (121,32 MiB).
+
+| Medida | CPU | CUDA |
+| --- | ---: | ---: |
+| Tempo medido (s) | 17,542 | 11,297 |
+| Pico residente do processo (GiB) | 1,387 | 2,305 |
+| Pico de tensores CUDA (MiB) | — | 107,96 |
+| Pico reservado pelo allocator CUDA (MiB) | — | 142,00 |
+
+CUDA apresentou razão de tempos CPU/CUDA de aproximadamente 1,55 e redução
+de tempo de 35,6% nessa medição. É uma execução por dispositivo, com CPU
+executada primeiro: cache do sistema, variação de carga e sessões sorteadas
+podem influenciar o resultado. Ainda não é decisão definitiva de dispositivo
+nem estimativa da campanha completa. RAM do processo e VRAM são medidas
+distintas, sem soma direta para dimensionar disponibilidade por unidade.
+
+O status de sucesso também comprova atualização do ator, pesos finitos,
+comparação exata de checkpoint no mesmo backend e hashes dos inputs. As
+medições pendentes são A2C/SAC/DDPG, repetição de PPO e sensibilidade de
+largura/carga. O próximo lote proposto executa os três algoritmos restantes
+em CPU e CUDA sequencialmente, mantendo os inputs e os parâmetros definidos.
+
+## Decisão posterior: CUDA como dispositivo da workstation
+
+O usuário decidiu seguir com CUDA nos quatro algoritmos, aproveitando a GPU
+disponível e o ganho observado no PPO. A busca do dispositivo mais rápido por
+algoritmo deixa de ser pré-requisito da campanha. Isso não demonstra vantagem
+de CUDA para todos os algoritmos, mas define a escolha operacional do projeto.
+
+O próximo lote substitui a comparação de seis execuções por três verificações:
+A2C, SAC e DDPG somente em CUDA, mantendo o perfil `cash_settled/all_gaps`,
+largura 128, parâmetros completos e materialização do buffer. O PPO já passou
+na GPU. Usar nova raiz `results/ws02_cuda_verification_v1/` para preservar
+quaisquer execuções do lote de comparação anterior.
+
+Os runners recebem `--device cuda` explicitamente. Seus defaults CPU são
+mantidos para compatibilidade e execução local; nenhum código remoto precisa
+ser atualizado para esses comandos. CPU permanece alternativa configurável.
+O objetivo agora é conferir execução, atualização, checkpoint e recursos em
+CUDA antes de dimensionar a campanha completa, com os bloqueios metodológicos
+inalterados. O sucesso dos três algoritmos na GPU ainda está pendente.
+
+## Verificações CUDA concluídas
+
+O usuário confirmou `compute_benchmark_completed` para A2C, SAC e DDPG no
+lote CUDA, além do PPO já verificado. Todos usaram os parâmetros completos,
+largura 128 e o perfil `cash_settled/all_gaps`. SAC/DDPG realizaram o aquecimento
+de 10.000 passos sem atualizações, seguido de 2.048 passos com 2.048 updates.
+A2C realizou 2.050 passos na fase medida, com 410 updates, completando rollouts
+de cinco passos; o aquecimento teve cinco passos. A diferença de orçamento
+é registrada e esperada.
+
+| Algoritmo | Passos medidos | Tempo (s) | Pico RAM processo (GiB) | Pico tensores CUDA (MiB) | Pico reservado CUDA (MiB) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| PPO | 2.048 | 11,297 | 2,305 | 107,96 | 142,00 |
+| A2C | 2.050 | 8,826 | 1,929 | 107,96 | 144,00 |
+| SAC | 2.048 | 34,047 | 13,541 | 212,56 | 264,00 |
+| DDPG | 2.048 | 29,930 | 13,356 | 166,64 | 204,00 |
+
+Buffers medidos: PPO 127.213.568 bytes; A2C 310.580 bytes; SAC e DDPG
+12.412.400.000 bytes cada, materializados na RAM. A baixa VRAM de tensores
+não desloca esses buffers para a GPU e não mede toda a memória do driver.
+
+Os quatro status de conclusão também atestam atualização do ator na fase
+medida, pesos finitos, comparação exata de checkpoint no mesmo dispositivo
+e verificação dos inputs pelo runner. Não houve preços de validação/teste
+nem seleção financeira. A decisão operacional de usar CUDA passa a ter
+verificação funcional nos quatro algoritmos. Esses dados sustentam um job
+por vez nessa configuração; não medem consumo de jobs concorrentes, todas
+as datas ou o orçamento completo de treino.
+
+Próximo passo: consolidar o protocolo executável e o plano da campanha com
+CUDA explícito, execução inicial sequencial, limites/retomada e controle de
+artefatos. A fase medida é curta; os tempos não são promessa da duração total.
+Os bloqueios de seleção/reajuste final ainda precisam ser resolvidos na
+consolidação metodológica. Nenhuma flag de autorização foi alterada aqui.

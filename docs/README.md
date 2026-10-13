@@ -57,6 +57,7 @@ A coluna “Nome anterior” permite localizar referências preservadas em proto
 | 043 | 2026-10-13 | [Perfis de conta e manifestos de datas na workstation02](043_workstation02_account_inputs.md) | — |
 | 044 | 2026-10-13 | [Treinos históricos curtos na workstation02](044_workstation02_historical_smoke.md) | — |
 | 045 | 2026-10-13 | [Escolha CPU/CUDA e benchmark dos parâmetros completos](045_compute_benchmark.md) | — |
+| 046 | 2026-10-13 | [Plano operacional CUDA e primeiro ajuste completo](046_cuda_campaign_plan.md) | — |
 
 ## Guias com nomes estáveis
 
@@ -65,7 +66,7 @@ A coluna “Nome anterior” permite localizar referências preservadas em proto
 
 ## Como registrar novos passos
 
-1. Acrescentar o próximo ID disponível, sem renumerar ou reutilizar IDs existentes. O próximo é **046**.
+1. Acrescentar o próximo ID disponível, sem renumerar ou reutilizar IDs existentes. O próximo é **047**.
 2. Criar `NNN_assunto.md` com data, propósito, resultado, verificação e pendências. Incluir links para o índice e a entrada anterior.
 3. Acrescentar uma linha nesta tabela e atualizar o link “Seguinte” do último registro.
 4. Em uma atualização do mesmo assunto, registrar sua data no arquivo e conservar o ID. Uma nova etapa ou emenda recebe uma entrada nova.
