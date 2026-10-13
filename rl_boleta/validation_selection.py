@@ -137,7 +137,7 @@ class ValidationContext:
     def replay(self,session,policy):
         return MaskedDailyReplay(self.env.tickers,**self.env.economic_options).run(session.day,session.frames,policy)
 
-    def evaluate_many(self,models):
+    def evaluate_many(self,models,*,on_day_complete=None):
         import numpy as np
         from .cached_observations import CachedMaskedEncoder
         rows={key:[] for key in models}
@@ -152,6 +152,8 @@ class ValidationContext:
                     if not np.all(np.isfinite(action)):raise RuntimeError('nonfinite validation action')
                     return tuple(float(a) for a in np.clip(action,-1,1))
                 rows[key].append(result_metrics(self.replay(session,policy)))
+            if on_day_complete is not None:
+                on_day_complete(day,{key:values[-1] for key,values in rows.items()})
         self.verify_inputs();return rows
 
     def baselines(self):

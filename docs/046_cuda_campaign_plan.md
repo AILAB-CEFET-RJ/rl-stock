@@ -1,7 +1,7 @@
 # Plano operacional CUDA e primeiro ajuste de orçamento completo
 
 > Registro **046** · Data de referência: **2026-10-13** · [Índice](README.md)
-> Anterior: [Registro 045](045_compute_benchmark.md) · Seguinte: próxima entrada 047, ainda não criada.
+> Anterior: [Registro 045](045_compute_benchmark.md) · Seguinte: [Registro 047](047_first_tuning_checkpoint.md).
 
 O usuário pediu a consolidação e deseja iniciar um treinamento antes de dar
 aula. Os quatro algoritmos passaram pela verificação funcional em CUDA com
